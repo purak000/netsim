@@ -1,0 +1,2 @@
+[console_scripts]
+netsim = netsim.cli:main
