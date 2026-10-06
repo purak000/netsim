@@ -5,7 +5,7 @@ import unittest
 
 from netsim import dsl, log
 from netsim.layout import layout
-from netsim.render import render
+from netsim.render import fit, render, routes
 
 GOLDEN = pathlib.Path(__file__).resolve().parent / "golden"
 
@@ -76,6 +76,68 @@ class Golden(unittest.TestCase):
 
     def test_cycle(self):
         self.check(cycle)
+
+
+def detour():
+    a, b, c = dsl.host("A"), dsl.switch("B"), dsl.host("C")
+    dsl.join(a, b, c)
+    dsl.join(a, c)                      # B sits between A and C on the row
+
+
+def wide():
+    dsl.join(*[dsl.host(f"H{i}") for i in range(6)])
+
+
+class Routing(unittest.TestCase):
+    def paths(self, build):
+        dsl.model.reset()
+        build()
+        rects = layout(dsl.model)
+        grid, out = routes(dsl.model, rects)
+        self.assertEqual(len(out), len(dsl.model.links))
+        for l, cells in out:            # rules 1 and 2 for every link
+            ra, rb = rects[l.a], rects[l.b]
+            self.assertTrue(all(c not in grid.box for c in cells[1:-1]), (l.a, l.b))
+            for r, end in ((ra, cells[0]), (rb, cells[-1])):
+                x, y = end
+                self.assertTrue(x in (r.x, r.x + r.w - 1) or y in (r.y, r.y + r.h - 1))
+                self.assertTrue(x == r.x + r.w // 2 or y == r.y + (r.h - 1) // 2)
+            for g in grid.groups:
+                inside = {l.a, l.b} & set(dsl.model.flat_members(g))
+                hits = [i for i, c in enumerate(cells) if grid.border.get(c, (None,))[0] == g]
+                self.assertEqual(len(hits), 1 if len(inside) == 1 else 0, (l.a, l.b, g))
+                for i in hits:          # straight across
+                    p, q = cells[i - 1], cells[i + 1]
+                    self.assertTrue(p[0] == q[0] or p[1] == q[1])
+        return {(l.a, l.b): cells for l, cells in out}
+
+    def test_detour(self):
+        cells = self.paths(detour)[("A", "C")]
+        self.assertGreater(len({x for x, _ in cells}), 2)
+        self.assertGreater(len({y for _, y in cells}), 1)   # left the row to get around B
+
+    def test_cycle(self):
+        signal.alarm(5)
+        try:
+            out = self.paths(cycle)
+        finally:
+            signal.alarm(0)
+        self.assertEqual(len(out), 3)
+
+    def test_nested_crosses_borders_once(self):
+        self.paths(nested)
+
+    def test_wider_than_terminal(self):
+        dsl.model.reset()
+        wide()
+        log.tool.clear()
+        c = render(dsl.model)
+        self.assertGreater(c.w, 80)
+        fit(c, 80)
+        self.assertEqual(c.w, 80)
+        self.assertEqual([e.code for e in log.tool.entries], ["T_FIT"])
+        self.assertEqual(log.tool.entries[0].lvl, "W")
+        self.assertIn("[+]", c.to_text().splitlines()[c.h // 2][-3:])
 
 
 class Stable(unittest.TestCase):

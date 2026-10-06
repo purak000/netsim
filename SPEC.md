@@ -80,7 +80,7 @@ Future shape: `Topology -> Model -> Event/Packet Engine -> Device behavior -> Re
 - Node box fixed 10x4 (names cut to 8 chars, labels to 6), name colored by kind (router cyan, switch magenta, dns yellow, host white, cloud blue; one theme dict).
 - Dots: left = power, `●` on (green) / `○` off (red). Right = activity, dim idle, yellow when a packet arrives, **red on drop**. Symbols carry meaning, color only supplements.
 - Group box with embedded title `┌─ LAN1 ───┐`; nested groups drawn outer to inner; `collapsed=True` draws one box.
-- Links: neighbours get a straight line; otherwise orthogonal paths plus junction table (`─`+`│`=`┼`). A link that would cross a box goes down, across and back up below the row. Down links are drawn with `x`. No general auto-router.
+- Links: neighbours get a straight line; otherwise orthogonal paths plus junction table (`─`+`│`=`┼`). A link never passes through a box: it attaches at the middle of the edge facing the other end and runs through the gutters and margin, below the row when detouring. Group borders are crossed straight, once, in one cell. Down links are drawn with `x`.
 - Layout: BFS layers from the gateway per group (a layer is a column); top-level groups left to right, 6 to 8 cell gap; declaration order for stability (no hashes). Visited set for cycles.
 - Auto-fit: wider than terminal gives pan plus `T_FIT` warning. Recompute on `SIGWINCH`.
 - Status bar: `● on  ○ off  ● traffic | 5n 4l | NET 1E 2W | TOOL 0E | OK`.
@@ -193,7 +193,9 @@ Tested: T_NAME, T_ARGS, T_SYNTAX, T_IO, T_EXC (line number), T_UNKNOWN, T_LAYOUT
 **Not yet tested:** watch in a real terminal (tmux).
 
 **Deviations from the plan above:**
-- Layout is naive: one row in declaration order, no BFS layers, no collapse, no auto-fit.
+- Layout is naive: one row in declaration order, no BFS layers, no collapse.
+- Link routing is a small cost-based grid search (not the down-across-up rule): node boxes are blocked, borders are crossable only by links with exactly one end inside, sibling links share a trunk.
+- Auto-fit clips at the terminal width with a `[+]` hint and `T_FIT` (W); no panning yet. `SIGWINCH` re-renders (Unix only).
 - Group members follow the order passed to `group()`.
 - Model resets in place, so `from netsim import *` in a topo file shares the same model.
 - `send()` runs when called (no timeline yet), so `power()` / `down()` must come before it to affect it.

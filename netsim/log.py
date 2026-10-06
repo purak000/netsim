@@ -15,7 +15,8 @@ CODES = {
     "T_SYNTAX": ("E", "compile error"), "T_EXC": ("E", "exception in topo file"),
     "T_TIMEOUT": ("E", "exec exceeded limit"), "T_NAME": ("E", "duplicate name"),
     "T_UNKNOWN": ("E", "unknown object"), "T_ARGS": ("E", "bad argument"),
-    "T_LAYOUT": ("E", "layout failed"), "T_RENDER": ("E", "renderer crashed, last good frame kept"),
+    "T_LAYOUT": ("E", "layout failed"),
+    "T_FIT": ("W", "frame wider than terminal, clipped"), "T_RENDER": ("E", "renderer crashed, last good frame kept"),
     "T_IO": ("E", "file missing or unreadable"), "T_ERROR": ("E", "other tool error"),
 }
 

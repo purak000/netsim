@@ -1,6 +1,7 @@
 # netsim/canvas.py
 """Cell grid. Lines are stored as direction bitmasks so crossings merge into junctions."""
 N, E, S, W = 1, 2, 4, 8
+OPP = {N: S, E: W, S: N, W: E}
 UNI = {0: " ", N: "│", S: "│", N | S: "│", E: "─", W: "─", E | W: "─",
        E | S: "┌", S | W: "┐", N | E: "└", N | W: "┘", N | E | S: "├", N | S | W: "┤",
        E | S | W: "┬", N | E | W: "┴", N | E | S | W: "┼"}
@@ -50,6 +51,20 @@ class Canvas:
         y1, y2 = sorted((y1, y2))
         for y in range(y1, y2 + 1):
             self._bits(x, y, (S if y < y2 else 0) | (N if y > y1 else 0), style)
+
+    def path(self, cells, style=""):
+        """path(cells, style) -- polyline through orthogonally adjacent cells, merging junctions."""
+        for (x1, y1), (x2, y2) in zip(cells, cells[1:]):
+            d = E if x2 > x1 else W if x2 < x1 else S if y2 > y1 else N
+            self._bits(x1, y1, d, style)
+            self._bits(x2, y2, OPP[d], style)
+
+    def clip(self, w):
+        """clip(w) -- drop columns at and right of w, in place."""
+        self.w = min(self.w, w)
+        for grid in (self.mask, self.char, self.style):
+            for row in grid:
+                del row[self.w:]
 
     def box(self, rect, title=None, style="", fill=False):
         """box(rect, title=None) -- bordered rectangle; fill=True clears what is inside."""
