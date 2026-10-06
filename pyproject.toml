@@ -1,0 +1,17 @@
+# pyproject.toml
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "netsim-tui"
+version = "0.1.0"
+description = "Terminal network topology visualizer"
+requires-python = ">=3.10"
+dependencies = ["rich"]
+
+[project.scripts]
+netsim = "netsim.cli:main"
+
+[tool.setuptools]
+packages = ["netsim"]
