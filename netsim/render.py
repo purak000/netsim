@@ -4,12 +4,14 @@ import heapq
 import os
 
 from . import log
+from .anim import Timeline
 from .canvas import Canvas
 from .layout import Rect, collapsed_title, layout, shown
 
 THEME = {"router": "bold cyan", "switch": "bold magenta", "dns": "bold yellow", "host": "bold white",
          "cloud": "bold blue", "on": "green", "off": "red", "idle": "dim", "group": "bright_black",
-         "title": "bold", "link": "", "down": "red"}
+         "title": "bold", "link": "", "down": "red",
+         "hop": "bold yellow", "drop": "bold red"}
 
 
 def _style(key):
@@ -137,12 +139,14 @@ def routes(model, rects):
     return grid, out
 
 
-def render(model, ascii=False, rects=None):
-    """render(model, ascii=False, rects=None) -- draw the topology onto a new Canvas."""
+def render(model, ascii=False, rects=None, now=None):
+    """render(model, ascii=False, rects=None, now=None) -- draw the topology onto a new Canvas.
+    now: seconds into the send timeline; lights activity dots. None draws them all idle."""
     rects = rects if rects is not None else layout(model)
     if not rects:
         return Canvas(1, 0, ascii)
     grid, paths = routes(model, rects)
+    lit = Timeline.build(model.events).state(now) if now is not None else {}
 
     pts = [p for r in rects.values() for p in ((r.x, r.y), (r.x + r.w - 1, r.y + r.h - 1))]
     pts += [p for _, cells in paths for p in cells]
@@ -173,7 +177,9 @@ def render(model, ascii=False, rects=None):
         c.text(r.x + 2, r.y + 2, n.meta.get("label", "")[: r.w - 4])
         on, off, idle = ("*", "o", ".") if ascii else ("●", "○", "●")
         c.put(r.x + 1, r.y + 2, on if n.on else off, _style("on" if n.on else "off"))
-        c.put(r.x + r.w - 2, r.y + 2, idle, _style("idle"))
+        act = lit.get(k)
+        dot = {"hop": "+" if ascii else "●", "drop": "x" if ascii else "×"}.get(act, idle)
+        c.put(r.x + r.w - 2, r.y + 2, dot, _style(act or "idle"))
     for name, g in model.groups.items():
         if g.collapsed and name in rects:
             c.box(rects[name], style=_style("group"), fill=True)
@@ -181,11 +187,12 @@ def render(model, ascii=False, rects=None):
     return c
 
 
-def fit(canvas, cols):
-    """fit(canvas, cols) -- clip a canvas wider than cols in place, log T_FIT, mark the cut with [+]."""
+def fit(canvas, cols, warn=True):
+    """fit(canvas, cols, warn=True) -- clip a canvas wider than cols in place, log T_FIT if warn, mark the cut with [+]."""
     if canvas.w <= cols:
         return canvas
-    log.tool.add("T_FIT", "render", f"Warning: frame is {canvas.w} columns, terminal has {cols}; clipped")
+    if warn:
+        log.tool.add("T_FIT", "render", f"Warning: frame is {canvas.w} columns, terminal has {cols}; clipped")
     canvas.clip(cols)
     canvas.text(max(0, cols - 3), canvas.h // 2, "[+]", _style("title"))
     return canvas

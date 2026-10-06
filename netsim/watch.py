@@ -88,35 +88,55 @@ def _mtime(path):
 
 
 def watch(path, ascii=False):
-    """watch(path) -- live render, re-exec whenever the file's mtime changes."""
+    """watch(path) -- live render at 20 fps; re-exec when the file's mtime changes and
+    replay the packet animation only if the recorded sends changed."""
     from rich.console import Group
     from rich.live import Live
     from rich.text import Text
 
+    from .anim import Timeline
+
     frame, last, good, resized = None, object(), False, []
+    sends, t0, end, playing, fitted = None, 0.0, 0.0, False, None
     winch = hasattr(signal, "SIGWINCH")                # Unix only: recompute on terminal resize
     old = signal.signal(signal.SIGWINCH, lambda *_: resized.append(1)) if winch else None
     try:
         with Live(screen=True, auto_refresh=False) as live:
             while True:
-                m = _mtime(path)
-                if m != last or resized:
-                    if m != last:
-                        last = m
-                        new = build(path, ascii)
-                        frame, good = new or frame, new is not None
-                    elif good:                          # resize: same model, fresh layout and render
+                tick = time.monotonic()
+                m, dirty = _mtime(path), False
+                if m != last:
+                    last, dirty, fitted = m, True, None     # build clears the tool log, so T_FIT may log again
+                    new = build(path, ascii)
+                    frame, good = new or frame, new is not None
+                    if good and model.events != sends:
+                        sends, t0, end = copy.deepcopy(model.events), tick, Timeline.build(model.events).end
+                if resized:
+                    resized.clear()
+                    dirty = True
+                    if good:                                # same model, fresh layout and render
                         try:
                             frame = render(model, ascii, layout(model))
                         except Exception as e:
                             log.tool.add("T_RENDER", "render", f"Error: {type(e).__name__}: {e}")
-                    resized.clear()
-                    shown = fit(copy.deepcopy(frame), shutil.get_terminal_size().columns) if frame else None
+                anim = good and tick - t0 < end
+                if anim or playing:                         # one more redraw after the end clears the dots
+                    try:
+                        frame = render(model, ascii, layout(model), now=tick - t0 if anim else None)
+                    except Exception as e:
+                        log.tool.add("T_RENDER", "render", f"Error: {type(e).__name__}: {e}")
+                        end, anim = 0.0, False              # stop the replay instead of logging every tick
+                    dirty, playing = True, anim
+                if dirty:
+                    cols, shown = shutil.get_terminal_size().columns, None
+                    if frame:
+                        shown = fit(copy.deepcopy(frame), cols, warn=(frame.w, cols) != fitted)
+                        fitted = (frame.w, cols)
                     parts = [shown.to_rich() if shown else Text("(no frame yet)", "dim"), Text(""),
                              Text(status(model, ascii) + f" | {os.path.basename(path)} | Ctrl-C quits", "dim")]
                     parts += [Text(str(e), "red") for e in log.tool.entries]
                     live.update(Group(*parts), refresh=True)
-                time.sleep(0.2)
+                time.sleep(max(0.0, 0.05 - (time.monotonic() - tick)))
     except KeyboardInterrupt:
         pass
     finally:

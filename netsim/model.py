@@ -37,10 +37,11 @@ class Model:
     nodes: dict = field(default_factory=dict)     # id -> Node, declaration order
     groups: dict = field(default_factory=dict)    # name -> Group
     links: list = field(default_factory=list)
+    events: list = field(default_factory=list)    # engine.Event per send, in send order
 
     def reset(self):
         """reset() -- clear in place so references held by the DSL stay valid."""
-        self.nodes.clear(); self.groups.clear(); self.links.clear()
+        self.nodes.clear(); self.groups.clear(); self.links.clear(); self.events.clear()
 
     def link_between(self, a, b):
         """link_between(a, b) -- the Link joining two node ids, or None."""
