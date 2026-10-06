@@ -66,6 +66,14 @@ class Canvas:
             for row in grid:
                 del row[self.w:]
 
+    def crop(self, x, y, w, h):
+        """crop(x, y, w, h) -- keep only the w x h window at (x, y), in place."""
+        x, y = max(0, min(x, self.w)), max(0, min(y, self.h))
+        w, h = max(0, min(w, self.w - x)), max(0, min(h, self.h - y))
+        for grid in (self.mask, self.char, self.style):
+            grid[:] = [row[x:x + w] for row in grid[y:y + h]]
+        self.w, self.h = w, h
+
     def box(self, rect, title=None, style="", fill=False):
         """box(rect, title=None) -- bordered rectangle; fill=True clears what is inside."""
         x, y, w, h = rect

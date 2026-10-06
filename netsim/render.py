@@ -187,14 +187,26 @@ def render(model, ascii=False, rects=None, now=None):
     return c
 
 
-def fit(canvas, cols, warn=True):
-    """fit(canvas, cols, warn=True) -- clip a canvas wider than cols in place, log T_FIT if warn, mark the cut with [+]."""
-    if canvas.w <= cols:
+def fit(canvas, cols, warn=True, x=0, y=0, rows=None):
+    """fit(canvas, cols, warn=True, x=0, y=0, rows=None) -- clip a canvas larger than cols x rows in place,
+    viewing from (x, y); log T_FIT if warn and too wide; mark each edge with hidden content with [+]."""
+    rows = canvas.h if rows is None else rows
+    if canvas.w <= cols and canvas.h <= rows:
         return canvas
-    if warn:
-        log.tool.add("T_FIT", "render", f"Warning: frame is {canvas.w} columns, terminal has {cols}; clipped")
-    canvas.clip(cols)
-    canvas.text(max(0, cols - 3), canvas.h // 2, "[+]", _style("title"))
+    W, H = canvas.w, canvas.h
+    if warn and W > cols:
+        log.tool.add("T_FIT", "render", f"Warning: frame is {W} columns, terminal has {cols}; clipped")
+    x, y = max(0, min(x, W - cols)), max(0, min(y, H - rows))
+    canvas.crop(x, y, cols, rows)
+    st, w, h = _style("title"), canvas.w, canvas.h
+    if x + w < W:
+        canvas.text(max(0, w - 3), h // 2, "[+]", st)
+    if x > 0:
+        canvas.text(0, h // 2, "[+]", st)
+    if y > 0:
+        canvas.text(max(0, w // 2 - 1), 0, "[+]", st)
+    if y + h < H:
+        canvas.text(max(0, w // 2 - 1), h - 1, "[+]", st)
     return canvas
 
 
