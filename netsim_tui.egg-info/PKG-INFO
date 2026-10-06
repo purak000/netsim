@@ -1,6 +1,0 @@
-Metadata-Version: 2.4
-Name: netsim-tui
-Version: 0.1.0
-Summary: Terminal network topology visualizer
-Requires-Python: >=3.10
-Requires-Dist: rich
