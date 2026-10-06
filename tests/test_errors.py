@@ -135,6 +135,28 @@ class Send(unittest.TestCase):
         self.assertFalse(dsl.send(self.pc1, self.d1))
         self.assertEqual([(e.code, e.where) for e in log.net.entries], [("N_LINK_DOWN", "sw1-r1")])
 
+    def test_down_blocks_send(self):
+        dsl.down(self.sw1, self.r1)
+        self.assertFalse(dsl.send(self.pc1, self.d1))
+        self.assertEqual([(e.code, e.where, e.msg) for e in log.net.entries][-2:],
+                         [("N_LINK", "sw1-r1", "sw1-r1 down"), ("N_LINK_DOWN", "sw1-r1", "send pc1>dns1 blocked by down link sw1-r1")])
+
+    def test_up_restores_delivery(self):
+        dsl.down(self.r1, self.sw1)
+        dsl.up(self.r1, self.sw1)
+        self.assertEqual(log.net.entries[-1].msg, "r1-sw1 up")
+        self.assertTrue(dsl.send(self.pc1, self.d1))
+        self.assertEqual(log.net.entries[-1].code, "N_DELIVER")
+
+    def test_down_up_bad_args(self):
+        for fn in (dsl.down, dsl.up):
+            with self.assertRaises(dsl.NetsimError) as cm:
+                fn(self.pc1, Node("ghost", "host"))
+            self.assertEqual(cm.exception.code, "T_UNKNOWN")
+            with self.assertRaises(dsl.NetsimError) as cm:
+                fn(self.pc1, self.d1)
+            self.assertEqual(cm.exception.code, "T_ARGS")
+
 
 if __name__ == "__main__":
     unittest.main()

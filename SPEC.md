@@ -189,6 +189,7 @@ Check the `netsim` name on PyPI before committing to it. Provide `README.md` (wh
 
 **Done (steps 1-4):** model, dsl, log, canvas, naive layout, render, watch, cli, pyproject; engine.py (BFS path, send diagnostics), validate.py (N_ISOLATED, N_GW_MISSING), tests/test_errors.py (9 tests passing). `pip install -e .`, `init`, `run`, `watch` work.
 Tested: T_NAME, T_ARGS, T_SYNTAX, T_IO, T_EXC (line number), T_UNKNOWN, T_LAYOUT / T_RENDER keep the last good frame, 3-node cycle (no link through a box), send delivered / N_NODE_OFF at r1 / N_NOPATH / N_LINK_DOWN, nested groups, watch re-render on save, Ctrl-C.
+**Added:** step 5 (`netsim logs`, net.log sink, docs.py `info()` / `help` / `man`) and `down(a, b)` / `up(a, b)` in the DSL (state, log N_LINK); 17 tests passing.
 **Not yet tested:** watch in a real terminal (tmux).
 
 **Deviations from the plan above:**

@@ -1,6 +1,6 @@
 # netsim/dsl.py
 """DSL functions exec'd from topology files; they build into `model`."""
-from . import engine
+from . import engine, log
 from .docs import category, info
 from .model import Group, Link, Model, Node
 
@@ -138,6 +138,31 @@ def label(x, text):
     return x
 
 
+def _set_link(a, b, up, fn):
+    if not (isinstance(a, Node) and isinstance(b, Node)):
+        raise NetsimError("T_UNKNOWN", f"Error: {fn}() needs two devices, got {a!r}, {b!r}")
+    ia, ib = _resolve(a, fn), _resolve(b, fn)
+    l = model.link_between(ia, ib)
+    if l is None:
+        raise NetsimError("T_ARGS", f"Error: no link between '{ia}' and '{ib}'")
+    l.up = up
+    log.net.add("N_LINK", f"{ia}-{ib}", f"{ia}-{ib} {'up' if up else 'down'}")
+    return l
+
+
+@category("state")
+def down(a, b):
+    """down(a, b) -- take the link between devices a and b down.
+    Sends after this line that need the link fail with N_LINK_DOWN."""
+    return _set_link(a, b, False, "down")
+
+
+@category("state")
+def up(a, b):
+    """up(a, b) -- bring the link between devices a and b back up."""
+    return _set_link(a, b, True, "up")
+
+
 @category("traffic")
 def send(a, b, ttl=16, proto="icmp"):
     """send(a, b, ttl=16, proto="icmp") -- send one packet now; results go to the net log.
@@ -145,7 +170,7 @@ def send(a, b, ttl=16, proto="icmp"):
     return engine.send(model, engine.Packet(_resolve(a, "send"), _resolve(b, "send"), ttl, proto))
 
 
-EXPORTS = ["host", "switch", "router", "dns", "cloud", "group", "join", "star", "power", "label", "send", "info", "NetsimError"]
+EXPORTS = ["host", "switch", "router", "dns", "cloud", "group", "join", "star", "power", "label", "down", "up", "send", "info", "NetsimError"]
 
 
 def namespace():

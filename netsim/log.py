@@ -5,7 +5,7 @@ from collections import Counter, deque
 from dataclasses import dataclass
 
 CODES = {
-    "N_CREATE": ("I", "device or link created"), "N_LINK": ("I", "link created"),
+    "N_CREATE": ("I", "device or link created"), "N_LINK": ("I", "link created, or set up/down"),
     "N_SEND": ("I", "packet sent"), "N_HOP": ("I", "hop traversed"), "N_DELIVER": ("I", "delivered"),
     "N_LOSS": ("E", "dropped by link loss"), "N_DROP": ("E", "dropped"),
     "N_NODE_OFF": ("E", "blocked by powered-off node"), "N_LINK_DOWN": ("E", "link down"),
