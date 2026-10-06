@@ -4,7 +4,7 @@ import os
 
 from . import log
 from .canvas import Canvas
-from .layout import layout
+from .layout import collapsed_title, layout, shown
 
 THEME = {"router": "bold cyan", "switch": "bold magenta", "dns": "bold yellow", "host": "bold white",
          "cloud": "bold blue", "on": "green", "off": "red", "idle": "dim", "group": "bright_black",
@@ -22,13 +22,18 @@ def render(model, ascii=False, rects=None):
     base = max((r.y + r.h for r in rects.values()), default=0)
     routes = []
     for l in model.links:
-        a, b = sorted((rects[l.a], rects[l.b]), key=lambda r: r.x)
+        ea, eb = shown(model, l.a), shown(model, l.b)   # links to hidden members attach to the collapsed box
+        if ea == eb:
+            continue
+        a, b = sorted((rects[ea], rects[eb]), key=lambda r: r.x)
         between = any(a.x < r.x < b.x for r in nodes)
         routes.append((l, a, b, between))
     lanes = sum(1 for *_, far in routes if far)
     c = Canvas(max((r.x + r.w for r in rects.values()), default=1), base + lanes + (1 if lanes else 0), ascii)
 
     for name, g in model.groups.items():
+        if g.collapsed or name not in rects:
+            continue
         c.box(rects[name], style=_style("group"))
         c.text(rects[name].x + 2, rects[name].y, f" {name} ", _style("title"))
 
@@ -61,6 +66,10 @@ def render(model, ascii=False, rects=None):
         on, off, idle = ("*", "o", ".") if ascii else ("●", "○", "●")
         c.put(r.x + 1, r.y + 2, on if n.on else off, _style("on" if n.on else "off"))
         c.put(r.x + r.w - 2, r.y + 2, idle, _style("idle"))
+    for name, g in model.groups.items():
+        if g.collapsed and name in rects:
+            c.box(rects[name], style=_style("group"), fill=True)
+            c.text(rects[name].x + 2, rects[name].y, f" {collapsed_title(model, name)} ", _style("title"))
     return c
 
 
