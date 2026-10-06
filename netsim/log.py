@@ -33,20 +33,24 @@ class Entry:
 
 
 class Log:
-    def __init__(self, name, cap=200, sink=None):
+    def __init__(self, name, cap=200, sink=None, overwrite=False):
         self.name, self.sink, self.entries = name, sink, deque(maxlen=cap)
+        self.overwrite = overwrite             # True: clear() truncates the sink file
+
+    def _write(self, mode, text):
+        try:
+            os.makedirs(os.path.dirname(self.sink), exist_ok=True)
+            with open(self.sink, mode) as f:
+                f.write(text)
+        except OSError:
+            pass
 
     def add(self, code, where="", msg="", t=0.0):
         """add(code, where, msg, t) -- record an entry; level comes from CODES."""
         e = Entry(t, CODES.get(code, ("E",))[0], code, where, msg)
         self.entries.append(e)
         if self.sink:
-            try:
-                os.makedirs(os.path.dirname(self.sink), exist_ok=True)
-                with open(self.sink, "a") as f:
-                    f.write(str(e) + "\n")
-            except OSError:
-                pass
+            self._write("a", str(e) + "\n")
         return e
 
     def counts(self):
@@ -54,8 +58,23 @@ class Log:
         return Counter(e.lvl for e in self.entries)
 
     def clear(self):
+        """clear() -- drop entries; an overwrite log also empties its file."""
         self.entries.clear()
+        if self.sink and self.overwrite:
+            self._write("w", "")
 
 
-net = Log("net")
+def read_lines(path, min_lvl="I", last=None):
+    """read_lines(path, min_lvl, last) -- log file lines at min_lvl or worse (I < W < E)."""
+    try:
+        with open(path) as f:
+            lines = f.read().splitlines()
+    except OSError:
+        return []
+    keep = "IWE"["IWE".index(min_lvl):]
+    lines = [ln for ln in lines if ln.split(" ")[1:2] and ln.split(" ")[1] in keep]
+    return lines[-last:] if last else lines
+
+
+net = Log("net", sink=os.path.expanduser("~/.netsim/net.log"), overwrite=True)
 tool = Log("tool", sink=os.path.expanduser("~/.netsim/tool.log"))

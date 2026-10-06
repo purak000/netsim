@@ -1,12 +1,15 @@
 # netsim/dsl.py
 """DSL functions exec'd from topology files; they build into `model`."""
 from . import engine
+from .docs import category, info
 from .model import Group, Link, Model, Node
 
 model = Model()
 
 
 class NetsimError(Exception):
+    """NetsimError(code, msg) -- raised by DSL functions; code is a key of CODES."""
+
     def __init__(self, code, msg):
         super().__init__(msg)
         self.code, self.msg = code, msg
@@ -25,26 +28,31 @@ def _device(name, kind):
     return n
 
 
+@category("devices")
 def host(name):
     """host(name) -- create an end host."""
     return _device(name, "host")
 
 
+@category("devices")
 def switch(name):
     """switch(name) -- create a switch."""
     return _device(name, "switch")
 
 
+@category("devices")
 def router(name):
     """router(name) -- create a router (preferred group gateway)."""
     return _device(name, "router")
 
 
+@category("devices")
 def dns(name):
     """dns(name) -- create a DNS server."""
     return _device(name, "dns")
 
 
+@category("devices")
 def cloud(name):
     """cloud(name) -- create a cloud (Internet, WAN)."""
     return _device(name, "cloud")
@@ -59,6 +67,7 @@ def _resolve(x, fn):
     raise NetsimError("T_UNKNOWN", f"Error: {fn}() got unknown object {x!r}")
 
 
+@category("wiring")
 def group(name, *members, kind="lan", gw=None, collapsed=False):
     """group(name, *members, kind="lan", gw=None, collapsed=False) -- box devices/groups together.
     Members are devices or groups; a member can belong to one group only."""
@@ -86,6 +95,7 @@ def group(name, *members, kind="lan", gw=None, collapsed=False):
     return g
 
 
+@category("wiring")
 def join(*items, latency=0, loss=0.0):
     """join(a, b, ..., latency=0, loss=0.0) -- link items in a chain; groups use their gateway."""
     if isinstance(latency, bool) or not isinstance(latency, (int, float)) or latency < 0:
@@ -102,11 +112,13 @@ def join(*items, latency=0, loss=0.0):
     return out
 
 
+@category("wiring")
 def star(center, *leaves):
     """star(center, *leaves) -- link every leaf to center."""
     return [join(center, leaf)[0] for leaf in leaves]
 
 
+@category("state")
 def power(x, state="on"):
     """power(x, "on"|"off") -- switch a device on or off."""
     if state not in ("on", "off"):
@@ -117,6 +129,7 @@ def power(x, state="on"):
     return x
 
 
+@category("state")
 def label(x, text):
     """label(x, text) -- second line of text in the device box."""
     if not isinstance(x, Node):
@@ -125,13 +138,14 @@ def label(x, text):
     return x
 
 
+@category("traffic")
 def send(a, b, ttl=16, proto="icmp"):
     """send(a, b, ttl=16, proto="icmp") -- send one packet now; results go to the net log.
-    Uses the power/link state at the line where send() is called. Returns True if delivered."""
+    Runs when called; put power()/down() before it. Returns True if delivered."""
     return engine.send(model, engine.Packet(_resolve(a, "send"), _resolve(b, "send"), ttl, proto))
 
 
-EXPORTS = ["host", "switch", "router", "dns", "cloud", "group", "join", "star", "power", "label", "send", "NetsimError"]
+EXPORTS = ["host", "switch", "router", "dns", "cloud", "group", "join", "star", "power", "label", "send", "info", "NetsimError"]
 
 
 def namespace():

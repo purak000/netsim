@@ -18,6 +18,10 @@ join(a, b)
 """
 
 
+def setUpModule():                      # keep tests out of ~/.netsim
+    log.net.sink = log.tool.sink = None
+
+
 def topo(src):
     f = tempfile.NamedTemporaryFile("w", suffix=".py", delete=False)
     f.write(textwrap.dedent(src).lstrip())
@@ -32,7 +36,6 @@ def codes(lg):
 class ToolErrors(unittest.TestCase):
     def setUp(self):
         self.files = []
-        log.tool.sink = None
 
     def tearDown(self):
         for f in self.files:
