@@ -20,7 +20,7 @@ lan = group("LAN1", pc1, pc2, sw1, r1, kind="lan", gw=r1)
 
 # Nested group
 join(r1, server)
-servers = group("SERVERS", server, kind="lan")
+servers = group("SERVERS", server, kind="lan", gw=server)
 
 # Parent group
 site = group("SITE", lan, servers, kind="lan", gw=r1)
